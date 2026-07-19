@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gcc -O2 -Wall -o /tmp/claude-1000/-home-guillaume-bw-camera-low-level/2c1f2aa4-8ea6-45aa-8d04-01e1891001f9/scratchpad/bw_test bw_camera.c)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(v4l2-ctl -d /dev/video0 --all)",
+      "Bash(grep -iA6 \"capabilities\\\\|device caps\")",
+      "Bash(v4l2-ctl -d /dev/video20 --all)",
+      "Bash(grep -iA8 \"Capabilities     :\")",
+      "Bash(pkill -f '\\\\./bw_camera')",
+      "Bash(make)",
+      "Bash(echo \"make exit: $?\")",
+      "Bash(./bw_camera *)",
+      "Bash(v4l2-ctl -d /dev/video20 --get-fmt-video)",
+      "Bash(timeout 3 v4l2-ctl -d /dev/video20 --stream-mmap --stream-count=1 --stream-to=/tmp/claude-1000/-home-guillaume-bw-camera-low-level/2c1f2aa4-8ea6-45aa-8d04-01e1891001f9/scratchpad/live.grey)",
+      "Bash(python3 - /tmp/claude-1000/-home-guillaume-bw-camera-low-level/2c1f2aa4-8ea6-45aa-8d04-01e1891001f9/scratchpad/live.grey)",
+      "Bash(sudo -n true)",
+      "Bash(chmod +x setup_service.sh)",
+      "Bash(bash -n setup_service.sh)",
+      "Bash(systemctl status *)",
+      "Bash(journalctl -u bw_camera.service -n 30 --no-pager)",
+      "Bash(bash -n start_bw_camera.sh)",
+      "Bash(systemctl is-active *)",
+      "Bash(systemctl is-enabled *)",
+      "Bash(systemctl show *)",
+      "Bash(timeout 3 v4l2-ctl -d /dev/video20 --stream-mmap --stream-count=1 --stream-to=/tmp/claude-1000/-home-guillaume-bw-camera-low-level/2c1f2aa4-8ea6-45aa-8d04-01e1891001f9/scratchpad/service.grey)",
+      "Bash(make clean *)"
+    ]
+  }
+}
