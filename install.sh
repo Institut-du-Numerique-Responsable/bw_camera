@@ -3,7 +3,6 @@
 # =============================================================================
 # BW Camera Low Level - Script d'installation
 # Converting any camera to Black & White (GREY format) via v4l2loopback
-# Author: Mistral Vibe
 # Usage: sudo ./install.sh
 # =============================================================================
 

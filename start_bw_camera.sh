@@ -3,7 +3,6 @@
 # =============================================================================
 # BW Camera - Start/Stop Script
 # Start or stop the black & white camera driver
-# Author: Mistral Vibe
 # Usage: sudo ./start_bw_camera.sh [start|stop|restart]
 # =============================================================================
 
