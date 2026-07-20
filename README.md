@@ -83,16 +83,16 @@ flux monochrome est donc conservé malgré l'usage d'un format couleur.
 ```
 /dev/video0 (caméra physique)          /dev/video20 (v4l2loopback)
      │  YUYV 640x480 @30 FPS                  │  I420 640x480
-     │  capture streaming (mmap)               │  write()
-     ▼                                          ▼
+     │  capture streaming (mmap)              │  write()
+     ▼                                        ▼
  ┌────────────────────────────────────────────────────┐
- │                     bw_camera                       │
- │  1. VIDIOC_S_FMT source  -> YUYV                     │
- │  2. VIDIOC_S_FMT dest    -> I420                     │
- │  3. VIDIOC_REQBUFS/QBUF/DQBUF (mmap, 4 buffers)      │
- │  4. extraction du plan Y (octets pairs de YUYV)      │
- │  5. plans U/V = 128 (calculés une seule fois)        │
- │  6. write() de la frame I420 vers /dev/video20       │
+ │                     bw_camera                      │
+ │  1. VIDIOC_S_FMT source  -> YUYV                   │
+ │  2. VIDIOC_S_FMT dest    -> I420                   │
+ │  3. VIDIOC_REQBUFS/QBUF/DQBUF (mmap, 4 buffers)    │
+ │  4. extraction du plan Y (octets pairs de YUYV)    │
+ │  5. plans U/V = 128 (calculés une seule fois)      │
+ │  6. write() de la frame I420 vers /dev/video20     │
  └────────────────────────────────────────────────────┘
 ```
 
@@ -103,12 +103,12 @@ sortie, sans conversion colorimétrique.
 
 ## Structure du dépôt
 
-| Fichier                | Rôle                                                          |
-|-------------------------|----------------------------------------------------------------|
-| `bw_camera.c`           | Programme principal : capture V4L2, extraction Y, écriture I420 |
-| `Makefile`              | Compilation (`gcc -O2 -Wall`)                                  |
+| Fichier                 | Rôle                                                                          |
+|-------------------------|-------------------------------------------------------------------------------|
+| `bw_camera.c`           | Programme principal : capture V4L2, extraction Y, écriture I420               |
+| `Makefile`              | Compilation (`gcc -O2 -Wall`)                                                 |
 | `start_bw_camera.sh`    | Démarrage/arrêt du binaire, chargement du module, pré-configuration du format |
-| `install.sh`            | Installation complète : dépendances, module, service systemd  |
+| `install.sh`            | Installation complète : dépendances, module, service systemd                  |
 
 ## Prérequis
 
