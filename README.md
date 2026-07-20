@@ -1,186 +1,228 @@
-# BW Camera Low Level
+# BW Camera
 
-**Convert any webcam to Black & White (GREY format) in Linux** using V4L2 loopback.
+[![License: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](#licence)
+[![Langage: C](https://img.shields.io/badge/langage-C-555555.svg)](bw_camera.c)
+[![Plateforme: Linux](https://img.shields.io/badge/plateforme-Linux-yellow.svg)](#pr%C3%A9requis)
 
-Grayscale webcam (640x480 @ 30 FPS) compatible with **Teams, Chrome, Zoom, OBS, etc.**
+**Réduire l'empreinte environnementale de la visioconférence, sans quitter la caméra.**
 
-Output is **I420 (YUV420) with neutral chroma** — a black & white image in a
-format the apps actually accept. Bandwidth is still saved because the constant
-color planes compress to almost nothing in the app's video encoder (GREY output
-would be lighter on the wire but is rejected by Teams/Chrome/WebRTC).
+Convertit n'importe quelle webcam Linux en caméra virtuelle noir & blanc via
+**V4L2 loopback**, compatible Teams, Chrome, Zoom, OBS et tout consommateur
+V4L2/WebRTC.
 
----
+## Pourquoi ce projet
 
-## 📁 Project Structure
+La visioconférence est l'un des usages numériques les plus consommateurs en
+bande passante et en énergie au poste de travail : le flux vidéo domine très
+largement le volume de données échangé face à l'audio ou au partage d'écran.
+Une part significative de ce coût vient de l'information de **couleur**, que
+l'encodeur vidéo doit constamment recalculer et transmettre à chaque image,
+alors qu'elle n'apporte souvent rien à l'intelligibilité d'un échange de
+travail (un visage, un geste, un tableau blanc restent compréhensibles en
+niveaux de gris).
+
+`bw_camera` agit à la source : en supprimant la chrominance réelle du flux
+capturé (plans U/V fixés à une valeur neutre) avant même qu'il n'atteigne
+l'application de visioconférence, il permet à l'encodeur vidéo de
+l'application de compresser cette information désormais constante à
+quasi-zéro. Le résultat, à qualité perçue équivalente pour un usage
+professionnel classique, est une charge d'encodage/décodage et un débit
+réseau réduits — donc une consommation d'énergie moindre côté poste client,
+réseau et infrastructure de visioconférence, ainsi qu'un usage préservé sur
+les canaux avec une bande passante contrainte (Wi-Fi surchargé, 4G,
+connexions internationales).
+
+Ce projet est développé dans une démarche de **sobriété numérique** : réduire
+l'impact environnemental des usages numériques du quotidien par des choix
+techniques simples, portables et sans dépendance à une application tierce,
+plutôt que par la seule sensibilisation. Il s'inscrit dans les travaux de
+l'[Institut du Numérique Responsable](https://institutnr.org/).
+
+## Principe
+
+`bw_camera` est un petit programme C qui capture le flux d'une caméra physique
+via l'API V4L2 (streaming mmap), extrait la luminance de chaque image et la
+réinjecte dans une caméra virtuelle créée par le module noyau
+[`v4l2loopback`](https://github.com/umlaeute/v4l2loopback).
+
+Les applications de visioconférence n'acceptent généralement pas le format
+`GREY` (8 bits, un seul plan) en entrée V4L2. Le flux de sortie est donc
+encodé en **I420 (YUV 4:2:0)** : le plan Y contient la luminance réelle, les
+plans U et V sont fixés à une valeur neutre (128), ce qui produit une image
+en niveaux de gris dans un format standard accepté par Teams/Chrome/WebRTC.
+Les plans de chrominance étant constants, l'encodeur vidéo de l'application
+réceptrice les compresse quasiment à zéro : le gain de bande passante d'un
+flux monochrome est donc conservé malgré l'usage d'un format couleur.
+
+### Chaîne de traitement
 
 ```
-bw_camera_low_level/
-├── bw_camera.c          # Main C program (V4L2 API)
-├── Makefile             # Compilation rules
-├── start_bw_camera.sh   # Start/stop script
-├── install.sh           # Full installation script
-└── README.md            # This file
+/dev/video0 (caméra physique)          /dev/video20 (v4l2loopback)
+     │  YUYV 640x480 @30 FPS                  │  I420 640x480
+     │  capture streaming (mmap)               │  write()
+     ▼                                          ▼
+ ┌────────────────────────────────────────────────────┐
+ │                     bw_camera                       │
+ │  1. VIDIOC_S_FMT source  -> YUYV                     │
+ │  2. VIDIOC_S_FMT dest    -> I420                     │
+ │  3. VIDIOC_REQBUFS/QBUF/DQBUF (mmap, 4 buffers)      │
+ │  4. extraction du plan Y (octets pairs de YUYV)      │
+ │  5. plans U/V = 128 (calculés une seule fois)        │
+ │  6. write() de la frame I420 vers /dev/video20       │
+ └────────────────────────────────────────────────────┘
 ```
 
----
+YUYV (4:2:2 empaqueté) stocke chaque paire de pixels sous la forme
+`Y0 U0 Y1 V0`. Les octets de luminance sont donc aux positions paires de
+chaque ligne ; il suffit de les recopier pour obtenir le plan Y du I420 de
+sortie, sans conversion colorimétrique.
 
-## 🚀 Quick Start
+## Structure du dépôt
 
-### 1. Install Dependencies
+| Fichier                | Rôle                                                          |
+|-------------------------|----------------------------------------------------------------|
+| `bw_camera.c`           | Programme principal : capture V4L2, extraction Y, écriture I420 |
+| `Makefile`              | Compilation (`gcc -O2 -Wall`)                                  |
+| `start_bw_camera.sh`    | Démarrage/arrêt du binaire, chargement du module, pré-configuration du format |
+| `install.sh`            | Installation complète : dépendances, module, service systemd  |
+
+## Prérequis
+
+- Linux avec en-têtes noyau correspondant à `uname -r`
+- Module `v4l2loopback` (pré-compilé ou via DKMS)
+- Caméra source exposant le format **YUYV** en streaming (mmap) — le cas de
+  la quasi-totalité des webcams UVC
 
 ```bash
 sudo apt update
 sudo apt install gcc libv4l-dev v4l-utils zstd
 ```
 
-### 2. Run the Installer
+## Installation
 
 ```bash
 chmod +x install.sh
 sudo ./install.sh
 ```
 
-That's it! Your black & white camera will be available as **`/dev/video20`**.
+Le script `install.sh` :
 
----
+1. installe les dépendances (`gcc`, `libv4l-dev`, `v4l-utils`, `zstd`) ;
+2. charge `v4l2loopback` — utilise en priorité le module pré-compilé
+   (`v4l2loopback.ko.zst` sous `/lib/modules/`), sinon retombe sur DKMS
+   (`v4l2loopback-dkms`) ;
+3. vérifie l'apparition de `/dev/video20` ;
+4. pré-configure `/dev/video20` en `YU12` (I420) pour que les applications le
+   détectent immédiatement ;
+5. compile `bw_camera` (`make`) ;
+6. installe la configuration de démarrage automatique :
+   - `/etc/modules-load.d/v4l2loopback.conf` (chargement du module au boot)
+   - `/etc/modprobe.d/v4l2loopback.conf` (options : `devices=1 exclusive_caps=1 video_nr=20`)
+   - `/etc/systemd/system/bw_camera.service` (service `Restart=always`)
+7. démarre le service et affiche un résumé.
 
-## 🔧 Manual Installation
+## Installation manuelle
 
-### 1. Load v4l2loopback Module
+### 1. Charger le module v4l2loopback
 
 ```bash
-# For most systems (pre-compiled module exists)
 sudo modprobe v4l2loopback devices=1 exclusive_caps=1 video_nr=20
+```
 
-# If the above fails, try with DKMS
+Si le module n'est pas disponible pré-compilé :
+
+```bash
 sudo apt install v4l2loopback-dkms
 sudo modprobe v4l2loopback devices=1 exclusive_caps=1 video_nr=20
 ```
 
-Verify the device was created:
+Vérification :
+
 ```bash
-ls /dev/video*  # Should show /dev/video20
+ls /dev/video*   # doit lister /dev/video20
 ```
 
-### 2. (Optional) Pre-set the Virtual Camera Format
+### 2. (Optionnel) Pré-configurer le format de la caméra virtuelle
 
-`bw_camera` configures both the source (**YUYV 640x480 @30 FPS**) and the
-destination (**I420/YUV420 640x480**) itself via the V4L2 `S_FMT` ioctl, so you
-don't need to set formats manually. You may still pre-set the virtual camera so
-consumer apps immediately see it:
+`bw_camera` configure lui-même la source (YUYV 640x480 @30 FPS) et la
+destination (I420 640x480) via l'ioctl `VIDIOC_S_FMT`. Pré-configurer
+`/dev/video20` n'est utile que pour que les applications le détectent avant
+même le premier lancement de `bw_camera` :
 
 ```bash
 sudo v4l2-ctl -d /dev/video20 --set-fmt-video=width=640,height=480,pixelformat=YU12
 ```
 
-> **Note:** the source camera must support the **YUYV** pixel format and the
-> **streaming (mmap)** I/O method — the case for virtually all UVC webcams.
-> Check with `v4l2-ctl --list-formats-ext -d /dev/video0`.
-
-### 3. Compile and Run
+Vérifier que la caméra source supporte bien YUYV en streaming :
 
 ```bash
-# Compile
+v4l2-ctl --list-formats-ext -d /dev/video0
+```
+
+### 3. Compiler et lancer
+
+```bash
 make
-
-# Run (as root)
 sudo ./start_bw_camera.sh start
-
-# Stop
 sudo ./start_bw_camera.sh stop
 ```
 
----
+`start_bw_camera.sh` charge le module si nécessaire, pré-configure le format
+de sortie, compile le binaire s'il est absent, puis exécute `bw_camera` au
+premier plan (compatible `systemd Type=simple`). Il vérifie qu'aucune
+instance n'est déjà active via `pgrep -x bw_camera` (correspondance exacte du
+nom du binaire, pour éviter tout faux positif avec le chemin du script).
 
-## 📖 How It Works
+## Configuration
 
-1. **v4l2loopback** creates a virtual camera device (`/dev/video20`)
-2. **bw_camera.c** captures from your physical camera (`/dev/video0`):
-   - Configures the source to **YUYV** (640x480 @ 30 FPS) and captures via
-     **streaming mmap** (the I/O method UVC webcams support)
-   - Extracts the **Y bytes** (luminance = grayscale) from each YUYV line
-   - Writes the result to `/dev/video20` as **I420 (YUV420)** with the luminance
-     in the Y plane and the U/V color planes set to a neutral 128 (grayscale) —
-     a format Teams/Chrome/WebRTC accept (they reject GREY)
-3. **Teams/Chrome/Zoom** sees `/dev/video20` as a regular camera
+### Résolution et fréquence
 
----
-
-## ⚙️ Configuration
-
-### Change Resolution/FPS
-
-Edit `bw_camera.c` and modify these lines:
+Dans `bw_camera.c` :
 
 ```c
-#define WIDTH   640   // Width (pixels)
-#define HEIGHT  480   // Height (pixels)
-#define FPS     30    // Frames per second
+#define WIDTH   640
+#define HEIGHT  480
+#define FPS     30
 ```
 
-> The chosen resolution must be supported by your camera in **YUYV**. If not,
-> `bw_camera` reports the format it actually got and exits with an error.
+La résolution demandée doit être supportée par la caméra en YUYV. Le pilote
+V4L2 n'échoue pas silencieusement en cas de résolution non supportée : il
+ajuste le format à la volée. `bw_camera` compare le format réellement négocié
+(`VIDIOC_S_FMT` en sortie) à celui demandé et affiche une info si un
+ajustement a eu lieu, ou une erreur si le format n'est pas YUYV du tout.
 
-Then recompile:
+Recompiler après modification :
+
 ```bash
 make clean && make
 ```
 
-### Change Video Devices
+### Périphériques
 
-Edit `start_bw_camera.sh`:
+Dans `start_bw_camera.sh` :
 
 ```bash
-DEV_SRC="/dev/video1"   # Physical camera
-DEV_DST="/dev/video21"  # Virtual camera
+DEV_SRC="/dev/video1"    # caméra physique
+DEV_DST="/dev/video21"   # caméra virtuelle
 ```
 
----
+Les chemins des périphériques sont en dur dans `bw_camera.c`
+(`/dev/video0` et `/dev/video20`) : les modifier nécessite d'éditer le source
+et de recompiler.
 
-## 📦 Sharing
+## Déploiement permanent (systemd)
 
-### Create ZIP Archive
-
-```bash
-zip -r bw_camera_low_level.zip *
-```
-
-### Share via Git
+Géré automatiquement par `install.sh`. Pour une mise en place manuelle :
 
 ```bash
-cd /home/guillaume/bw_camera_low_level
-git init
-git add .
-git commit -m "BW Camera Low Level - Black and White Webcam"
-```
-
----
-
-## 🔄 Permanent Setup
-
-To ensure the camera works after reboot:
-
-```bash
-# Run the installer (handles everything)
-sudo ./install.sh
-```
-
-This creates:
-- `/etc/modules-load.d/v4l2loopback.conf` (auto-load module)
-- `/etc/modprobe.d/v4l2loopback.conf` (module options)
-- `/etc/systemd/system/bw_camera.service` (systemd service)
-
-### Manual Permanent Setup
-
-```bash
-# 1. Auto-load module at boot
+# Chargement du module au démarrage
 echo "v4l2loopback" | sudo tee /etc/modules-load.d/v4l2loopback.conf
 
-# 2. Module options
+# Options du module
 echo "options v4l2loopback devices=1 exclusive_caps=1 video_nr=20" | sudo tee /etc/modprobe.d/v4l2loopback.conf
 
-# 3. Create systemd service
-cat > /tmp/bw_camera.service << EOF
+# Service systemd
+sudo tee /etc/systemd/system/bw_camera.service > /dev/null << EOF
 [Unit]
 Description=BW Camera Driver (Black & White)
 After=network.target syslog.target
@@ -190,79 +232,73 @@ Type=simple
 WorkingDirectory=$(pwd)
 ExecStart=$(pwd)/start_bw_camera.sh start
 Restart=always
+RestartSec=5
 User=root
 
 [Install]
 WantedBy=multi-user.target
 EOF
-sudo cp /tmp/bw_camera.service /etc/systemd/system/
+
 sudo systemctl daemon-reload
-sudo systemctl enable bw_camera.service
-sudo systemctl start bw_camera.service
+sudo systemctl enable --now bw_camera.service
 ```
 
----
+## Dépannage
 
-## 🐛 Troubleshooting
-
-### `/dev/video20` does not exist
+**`/dev/video20` n'existe pas**
 
 ```bash
-# Check if module is loaded
 lsmod | grep v4l2loopback
-
-# If not, load it
 sudo modprobe v4l2loopback devices=1 exclusive_caps=1 video_nr=20
-
-# List all video devices
 ls /dev/video*
 ```
 
-### "la camera n'a pas accepte le format YUYV"
+**« la camera n'a pas accepte le format YUYV »**
 
-`bw_camera` requires the source to provide **YUYV**. Check the formats and
-resolutions your camera supports:
+`bw_camera` exige YUYV en source. Lister les formats/résolutions supportés :
+
 ```bash
 v4l2-ctl --list-formats-ext -d /dev/video0
 ```
 
-Pick a resolution listed under `'YUYV'` and set `WIDTH`/`HEIGHT` in
-`bw_camera.c` accordingly, then `make clean && make`. If your camera offers no
-YUYV mode at all (only MJPG, for example), the Y-plane extraction in
-`bw_camera.c` would need to be adapted to that format.
+Choisir une résolution listée sous `'YUYV'`, mettre à jour `WIDTH`/`HEIGHT`
+dans `bw_camera.c`, puis `make clean && make`. Si la caméra n'expose aucun
+mode YUYV (uniquement MJPG par exemple), l'extraction du plan Y devra être
+adaptée au format réellement disponible (décodage MJPG préalable).
 
-### Permission denied
+**Permission refusée sur `/dev/video0` ou `/dev/video20`**
 
 ```bash
-# Add user to video group
 sudo usermod -aG video $USER
-# Log out and back in
+# puis se déconnecter/reconnecter
 ```
 
-### DKMS build fails (kernel version mismatch)
+**Échec de compilation DKMS (incompatibilité de version noyau)**
 
-Use the pre-compiled module:
+Utiliser le module pré-compilé livré avec la distribution :
+
 ```bash
-# Find the module
 find /lib/modules -name "v4l2loopback.ko.zst"
-
-# Decompress it
 sudo zstd -d /path/to/v4l2loopback.ko.zst -o /path/to/v4l2loopback.ko --force
-
-# Load it
 sudo insmod /path/to/v4l2loopback.ko devices=1 exclusive_caps=1 video_nr=20
 ```
 
----
+## Limitations connues
 
-## 📜 License
+- Résolution et périphériques source/destination fixés à la compilation
+  (`bw_camera.c`) ; seule la copie des périphériques dans `start_bw_camera.sh`
+  ne recompile pas le binaire.
+- Suppose une source YUYV : les caméras exposant uniquement MJPG ou un autre
+  format packed nécessitent une adaptation du code d'extraction.
+- Aucune gestion de la reconnexion à chaud de la caméra source pendant
+  l'exécution : une déconnexion entraîne l'arrêt de la boucle de capture.
 
-**MIT License** - Free to use, modify, and share.
+## Licence
 
----
+MIT.
 
-## 🔗 Resources
+## Ressources
 
-- [V4L2 Documentation](https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html)
-- [v4l2loopback GitHub](https://github.com/umlaeute/v4l2loopback)
-- [Linux Video Devices](https://linuxtv.org/)
+- [Documentation V4L2](https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html)
+- [v4l2loopback (GitHub)](https://github.com/umlaeute/v4l2loopback)
+- [linuxtv.org](https://linuxtv.org/)
