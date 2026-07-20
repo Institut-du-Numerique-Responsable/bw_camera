@@ -51,6 +51,7 @@
     main { max-width: 46rem; margin: 0 auto; padding: 3rem 0 4rem; }
     h1 { font-size: 2rem; line-height: 1.2; margin-bottom: .75rem; }
     h2 { font-size: 1.35rem; margin: 2.5rem 0 .75rem; color: var(--accent); }
+    h3 { font-size: 1.05rem; }
     p  { margin-bottom: 1rem; }
     a  { color: var(--accent); }
     .tagline { font-size: 1.15rem; color: var(--muted); margin-bottom: 1.5rem; }
@@ -61,24 +62,97 @@
     }
     .cta.secondary { background: transparent; color: var(--accent);
                      border: 1.5px solid var(--accent); }
-    .duo { display: grid; gap: 1rem; grid-template-columns: 1fr;
-           margin: 1.25rem 0; }
-    @media (min-width: 40rem) { .duo { grid-template-columns: 1fr 1fr; } }
+
+    /* bandeau chrominance : décoratif, CSS pur, aucune requête ni script */
+    .chroma-strip {
+      display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px;
+      height: 1.6rem; border-radius: .35rem; overflow: hidden;
+      border: 1px solid var(--border); margin: 1.5rem 0 .4rem;
+    }
+    .chroma-strip span {
+      background: var(--sw, var(--muted));
+      animation: fade-to-grey 6s ease-in-out infinite;
+      animation-delay: var(--d, 0s);
+    }
+    @keyframes fade-to-grey {
+      0%, 40% { filter: saturate(1); }
+      55%, 100% { filter: saturate(0); }
+    }
+    .chroma-caption {
+      display: flex; justify-content: space-between;
+      font-size: .78rem; color: var(--muted); margin-bottom: 1.75rem;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .chroma-strip span { animation: none; filter: saturate(0); }
+    }
+
+    .duo, .trio { display: grid; gap: 1rem; grid-template-columns: 1fr; margin: 1.25rem 0; }
+    @media (min-width: 40rem) {
+      .duo { grid-template-columns: 1fr 1fr; }
+      .trio { grid-template-columns: repeat(3, 1fr); }
+    }
     .card { background: var(--card); border: 1px solid var(--border);
             border-radius: .6rem; padding: 1.1rem 1.2rem; }
-    .card h3 { font-size: 1.05rem; margin-bottom: .5rem; }
+    .card h3 { margin-bottom: .5rem; }
     .card p { font-size: .95rem; margin-bottom: 0; color: var(--muted); }
-    ul { padding-left: 1.2rem; margin-bottom: 1rem; }
+    .card .swatch { width: 1.6rem; height: 1.6rem; border-radius: .4rem; margin-bottom: .7rem; }
+
+    ul, ol { padding-left: 1.2rem; margin-bottom: 1rem; }
     li { margin-bottom: .45rem; }
+
+    /* pipeline */
+    .pipeline {
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+      margin: 1.25rem 0;
+    }
+    .pipeline .card { flex: 1 1 14rem; }
+    .pipeline .card .path { font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-weight: 600; margin-bottom: .2rem; }
+    .pipeline .card .fmt { font-size: .85rem; color: var(--muted);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .pipeline .arrow { color: var(--accent); font-size: 1.3rem; flex: 0 0 auto; }
+    .steps { list-style: none; padding-left: 0; counter-reset: step; }
+    .steps li {
+      counter-increment: step; display: flex; gap: .7rem; align-items: baseline;
+      font-size: .95rem; padding: .4rem 0; border-top: 1px solid var(--border);
+    }
+    .steps li:first-child { border-top: none; }
+    .steps li::before {
+      content: counter(step); flex: 0 0 auto;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .78rem;
+      font-weight: 700; color: var(--accent);
+      width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--card);
+      display: flex; align-items: center; justify-content: center;
+    }
+
     table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: .92rem; }
     th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--border); }
     th { color: var(--muted); font-weight: 600; }
+
     pre {
       background: var(--card); border: 1px solid var(--border);
       border-radius: .5rem; padding: 1rem; overflow-x: auto;
       font-size: .88rem; margin-bottom: 1rem;
     }
     code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+    /* cas rencontrés */
+    .case {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: .6rem; padding: .9rem 1.1rem; margin-bottom: .7rem;
+    }
+    .case summary {
+      cursor: pointer; font-weight: 600; font-size: .95rem;
+      display: flex; justify-content: space-between; align-items: center; gap: .8rem;
+    }
+    .case summary::-webkit-details-marker { display: none; }
+    .case summary::after {
+      content: "+"; color: var(--muted); font-family: ui-monospace, monospace; flex: 0 0 auto;
+    }
+    .case[open] summary::after { content: "–"; }
+    .case p { font-size: .92rem; color: var(--muted); margin: .6rem 0 0; }
+
     footer { border-top: 1px solid var(--border); margin-top: 3rem;
              padding-top: 1.25rem; font-size: .88rem; color: var(--muted); }
   </style>
@@ -86,9 +160,22 @@
 <body>
 <main>
   <h1>⚫ BW Camera, une webcam qui n'envoie plus la couleur</h1>
-  <p class="tagline">Convertit n'importe quelle webcam <strong>Linux</strong> en caméra virtuelle noir & blanc via <strong>V4L2 loopback</strong>, compatible Teams, Chrome, Zoom, OBS et tout consommateur V4L2/WebRTC.</p>
+  <p class="tagline">Convertit n'importe quelle webcam <strong>Linux</strong> en caméra virtuelle noir & blanc via <a href="https://github.com/umlaeute/v4l2loopback">V4L2 loopback</a>, compatible Teams, Chrome, Zoom, OBS et tout consommateur V4L2/WebRTC.</p>
 
-  <p>La visioconférence compte parmi les usages numériques les plus gourmands en bande passante et en énergie au poste de travail, et le flux vidéo domine largement ce coût face à l'audio ou au partage d'écran. Une bonne part de cette charge vient de la couleur, que l'encodeur recalcule et retransmet à chaque image, alors qu'un visage, un geste ou un tableau blanc restent compréhensibles en niveaux de gris.</p>
+  <div class="chroma-strip" aria-hidden="true">
+    <span style="--sw:#0a7190; --d:0s"></span><span style="--sw:#4f6fc4; --d:.1s"></span>
+    <span style="--sw:#c14f6f; --d:.2s"></span><span style="--sw:#d0a23f; --d:.3s"></span>
+    <span style="--sw:#0a7190; --d:.4s"></span><span style="--sw:#4f6fc4; --d:.5s"></span>
+    <span style="--sw:#c14f6f; --d:.6s"></span><span style="--sw:#d0a23f; --d:.7s"></span>
+    <span style="--sw:#0a7190; --d:.8s"></span><span style="--sw:#4f6fc4; --d:.9s"></span>
+    <span style="--sw:#c14f6f; --d:1s"></span><span style="--sw:#d0a23f; --d:1.1s"></span>
+  </div>
+  <div class="chroma-caption">
+    <span>YUYV, plans U/V réels</span>
+    <span>I420, plans U/V = 128 (constants)</span>
+  </div>
+
+  <p>La visioconférence pèse lourd en bande passante et en énergie au poste de travail, plus que l'audio ou le partage d'écran : le flux vidéo concentre l'essentiel de ce coût. Une partie vient de la couleur, que l'encodeur recalcule et retransmet à chaque image, alors qu'un visage, un geste ou un tableau blanc restent compréhensibles en niveaux de gris.</p>
 
   <p>BW Camera agit à la source : il neutralise la chrominance du flux avant qu'il n'atteigne l'application de visioconférence, ce qui permet à l'encodeur de la compresser à quasi-zéro. Le poste client, le réseau et l'infrastructure de visioconférence consomment donc moins d'énergie, à qualité perçue équivalente.</p>
 
@@ -97,22 +184,65 @@
     <a class="cta secondary" href="https://github.com/Institut-du-Numerique-Responsable/bw_camera#installation">Installer</a>
   </p>
 
-  <h2>Comment ça marche</h2>
-  <div class="duo">
+  <h2>Un levier parmi d'autres</h2>
+  <p>La couleur n'est qu'un des trois leviers qui pèsent sur le coût d'un flux vidéo, indépendant des deux leviers classiques d'encodage. Les trois sont cumulables : <code>WIDTH</code>, <code>HEIGHT</code> et <code>FPS</code> sont des constantes de compilation dans <code>bw_camera.c</code>, à adapter selon l'usage.</p>
+  <div class="trio">
     <div class="card">
-      <h3>À la capture</h3>
-      <p>Un programme C capture le flux YUYV de la caméra physique via V4L2 (streaming mmap) et en extrait le plan de luminance, sans conversion colorimétrique.</p>
+      <div class="swatch" style="background:linear-gradient(135deg,#4f6fc4,#c14f6f)"></div>
+      <h3>Couleur</h3>
+      <p>Chrominance neutralisée (U/V = 128). Résolution et fluidité intactes. Le levier de BW Camera.</p>
     </div>
     <div class="card">
-      <h3>Sur le réseau</h3>
-      <p>La luminance est réinjectée dans une caméra virtuelle en I420, avec des plans U/V constants. L'encodeur de l'application les compresse à quasi-zéro : le gain de bande passante d'un flux monochrome tient malgré un format couleur standard.</p>
+      <div class="swatch" style="background:repeating-linear-gradient(45deg, var(--muted), var(--muted) 3px, transparent 3px, transparent 6px)"></div>
+      <h3>Résolution</h3>
+      <p>Moins de pixels par image à encoder et transmettre. Exemple : 480×360 au lieu de 640×480.</p>
+    </div>
+    <div class="card">
+      <div class="swatch" style="background:var(--bg); border:1px dashed var(--muted)"></div>
+      <h3>Fréquence (FPS)</h3>
+      <p>Moins d'images par seconde, au prix de la fluidité. Exemple : 15 au lieu de 30.</p>
     </div>
   </div>
+
+  <h2>Comment ça marche</h2>
+  <p>Le format <code>GREY</code> natif est rejeté par Teams, Chrome et WebRTC : la sortie est donc encodée en <strong>I420</strong>, avec un plan Y réel et des plans U/V constants. L'image perçue est en niveaux de gris, et l'application accepte le flux sans modification. Toute la capture passe par l'<a href="https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html">API V4L2</a> du noyau Linux et son extension <a href="https://github.com/umlaeute/v4l2loopback">v4l2loopback</a>.</p>
+
+  <div class="pipeline">
+    <div class="card">
+      <div class="path">/dev/video0</div>
+      <div class="fmt">caméra physique · YUYV 640×480 @30fps</div>
+    </div>
+    <span class="arrow">→</span>
+    <div class="card">
+      <div class="path">/dev/video20</div>
+      <div class="fmt">v4l2loopback · I420 640×480</div>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li><code>VIDIOC_S_FMT</code> source → YUYV</li>
+    <li><code>VIDIOC_S_FMT</code> destination → I420</li>
+    <li><code>VIDIOC_REQBUFS</code> / <code>QBUF</code> / <code>DQBUF</code> (streaming mmap, 4 buffers)</li>
+    <li>Extraction du plan Y : octets pairs de chaque paire YUYV, sans conversion colorimétrique</li>
+    <li>Plans U/V fixés à 128, calculés une seule fois</li>
+    <li><code>write()</code> de la frame I420 vers <code>/dev/video20</code></li>
+  </ol>
 
   <h2>En 30 secondes</h2>
   <pre><code>git clone https://github.com/Institut-du-Numerique-Responsable/bw_camera.git
 cd bw_camera && chmod +x install.sh && sudo ./install.sh</code></pre>
   <p><code>install.sh</code> installe les dépendances, charge <code>v4l2loopback</code>, compile <code>bw_camera</code> et déploie un service systemd (<code>Restart=always</code>). Le flux noir & blanc apparaît en <code>/dev/video20</code>, prêt à être choisi comme caméra dans Teams, Chrome, Zoom ou OBS.</p>
+
+  <div class="duo">
+    <div class="card">
+      <h3>Prérequis</h3>
+      <p>Linux, en-têtes noyau pour <code>uname -r</code>, module <code>v4l2loopback</code> (pré-compilé ou DKMS), une webcam exposant YUYV en streaming mmap (quasi tout le parc UVC), et <code>gcc</code>/<code>libv4l-dev</code>/<code>v4l-utils</code>/<code>zstd</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Ce que fait install.sh</h3>
+      <p>Dépendances, chargement du module, pré-configuration de <code>/dev/video20</code> en I420, compilation, service systemd et démarrage automatique au boot.</p>
+    </div>
+  </div>
 
   <h2>Ce que contient le projet</h2>
   <table>
@@ -123,14 +253,33 @@ cd bw_camera && chmod +x install.sh && sudo ./install.sh</code></pre>
     <tr><td><code>install.sh</code></td><td>Installation complète : dépendances, module, service systemd</td></tr>
   </table>
 
-  <h2>Un levier parmi d'autres</h2>
-  <p>La couleur n'est qu'un des trois leviers qui pèsent sur le coût d'un flux vidéo, aux côtés de la résolution et de la fréquence d'images (FPS). Les trois sont indépendants et cumulables : <code>WIDTH</code>, <code>HEIGHT</code> et <code>FPS</code> sont des constantes de compilation dans <code>bw_camera.c</code>, à adapter selon l'usage.</p>
+  <h2>Problèmes rencontrés</h2>
+  <p>Quatre difficultés concrètes ont orienté les choix d'implémentation.</p>
+
+  <details class="case">
+    <summary>GREY rejeté par les applications de visio</summary>
+    <p>V4L2 propose un format noir & blanc pur, plus léger que I420. Teams, Chrome et WebRTC n'acceptent pourtant en entrée que des formats couleur standard. Solution : sortir en I420 avec chrominance neutre (128) ; le gain se fait au niveau de l'encodeur de l'application plutôt que du flux brut.</p>
+  </details>
+  <details class="case">
+    <summary>VIDIOC_S_FMT n'échoue pas sur une résolution non supportée</summary>
+    <p>Le pilote V4L2 ajuste silencieusement le format demandé sans retourner d'erreur. <code>bw_camera</code> relit systématiquement le format réellement négocié après l'ioctl pour détecter un ajustement ou une incompatibilité.</p>
+  </details>
+  <details class="case">
+    <summary>Écritures partielles et EAGAIN sur /dev/video20</summary>
+    <p>Le <code>write()</code> vers v4l2loopback peut n'écrire qu'une partie de la frame, ou échouer temporairement si aucun consommateur n'est encore attaché. <code>bw_camera</code> boucle (<code>write_full</code>) jusqu'à écriture complète, avec une courte pause en cas de blocage.</p>
+  </details>
+  <details class="case">
+    <summary>Faux positif de détection de processus déjà lancé</summary>
+    <p><code>pgrep -f ./bw_camera</code> correspondait aussi au chemin de <code>start_bw_camera.sh</code>, provoquant une boucle de redémarrage sous systemd. Correction : <code>pgrep -x bw_camera</code>, qui ne matche que le nom exact du processus.</p>
+  </details>
 
   <h2>Pourquoi c'est important</h2>
-  <p>Ce projet s'inscrit dans une démarche de sobriété numérique : réduire l'impact environnemental des usages numériques du quotidien par des choix techniques simples, portables et sans dépendance à une application tierce, plutôt que par la seule sensibilisation. Il s'appuie sur un format standard (I420) accepté par les applications existantes, sans exiger de plugin ni de configuration côté visioconférence.</p>
+  <p>Ce projet s'inscrit dans une démarche de <a href="https://institutnr.org/">sobriété numérique</a> : réduire l'impact environnemental des usages numériques du quotidien par des choix techniques simples, portables et sans dépendance à une application tierce, plutôt que par la seule sensibilisation. Il s'appuie sur un format standard (I420) accepté par les applications existantes, sans exiger de plugin ni de configuration côté visioconférence.</p>
+
+  <p>Même logique côté outillage de développement avec <a href="https://institut-du-numerique-responsable.github.io/green-claude/">green-claude</a>, un skill qui applique les référentiels RGESN et GR491 au code produit par un assistant IA.</p>
 
   <footer>
-    <p>Un projet open source (MIT) de l'<strong>Institut du Numérique Responsable</strong>.<br>
+    <p>Un projet open source (MIT) de l'<a href="https://institutnr.org/"><strong>Institut du Numérique Responsable</strong></a>.<br>
     Cette page applique les règles qu'elle promeut : zéro JavaScript, zéro requête externe, polices système, mode sombre natif.</p>
   </footer>
 </main>
