@@ -10,6 +10,8 @@ Convertit n'importe quelle webcam Linux en caméra virtuelle noir & blanc via
 **V4L2 loopback**, compatible Teams, Chrome, Zoom, OBS et tout consommateur
 V4L2/WebRTC.
 
+Page de présentation : [institut-du-numerique-responsable.github.io/bw_camera](https://institut-du-numerique-responsable.github.io/bw_camera/)
+
 ## Pourquoi ce projet
 
 La visioconférence est l'un des usages numériques les plus consommateurs en
