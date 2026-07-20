@@ -29,7 +29,7 @@ l'application de visioconférence, il permet à l'encodeur vidéo de
 l'application de compresser cette information désormais constante à
 quasi-zéro. Le résultat, à qualité perçue équivalente pour un usage
 professionnel classique, est une charge d'encodage/décodage et un débit
-réseau réduits — donc une consommation d'énergie moindre côté poste client,
+réseau réduits, donc une consommation d'énergie moindre côté poste client,
 réseau et infrastructure de visioconférence, ainsi qu'un usage préservé sur
 les canaux avec une bande passante contrainte (Wi-Fi surchargé, 4G,
 connexions internationales).
@@ -114,7 +114,7 @@ sortie, sans conversion colorimétrique.
 
 - Linux avec en-têtes noyau correspondant à `uname -r`
 - Module `v4l2loopback` (pré-compilé ou via DKMS)
-- Caméra source exposant le format **YUYV** en streaming (mmap) — le cas de
+- Caméra source exposant le format **YUYV** en streaming (mmap), le cas de
   la quasi-totalité des webcams UVC
 
 ```bash
@@ -132,7 +132,7 @@ sudo ./install.sh
 Le script `install.sh` :
 
 1. installe les dépendances (`gcc`, `libv4l-dev`, `v4l-utils`, `zstd`) ;
-2. charge `v4l2loopback` — utilise en priorité le module pré-compilé
+2. charge `v4l2loopback` : utilise en priorité le module pré-compilé
    (`v4l2loopback.ko.zst` sous `/lib/modules/`), sinon retombe sur DKMS
    (`v4l2loopback-dkms`) ;
 3. vérifie l'apparition de `/dev/video20` ;
@@ -276,9 +276,10 @@ projet :
 applications de visio.** V4L2 propose un format dédié au noir & blanc pur,
 plus léger que I420, mais Teams, Chrome et globalement WebRTC n'acceptent en
 entrée que des formats couleur standard. Solution retenue : sortir en I420
-(YUV 4:2:0) avec des plans de chrominance neutres (128) — l'image perçue est
-identique, l'application est satisfaite, et le gain de bande passante se fait
-au niveau de l'encodeur de l'application plutôt qu'au niveau du flux brut V4L2.
+(YUV 4:2:0) avec des plans de chrominance neutres (128) : l'image perçue est
+identique, l'application accepte le flux sans modification, et le gain de
+bande passante se fait au niveau de l'encodeur de l'application plutôt qu'au
+niveau du flux brut V4L2.
 
 **`VIDIOC_S_FMT` n'échoue pas en cas de résolution non supportée.** Le pilote
 V4L2 de la caméra source ajuste silencieusement le format demandé (résolution
