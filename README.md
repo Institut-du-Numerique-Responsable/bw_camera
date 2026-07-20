@@ -38,6 +38,28 @@ techniques simples, portables et sans dépendance à une application tierce,
 plutôt que par la seule sensibilisation. Il s'inscrit dans les travaux de
 l'[Institut du Numérique Responsable](https://institutnr.org/).
 
+### Un levier parmi d'autres
+
+Le passage en noir & blanc n'est qu'une des façons de réduire le coût d'un
+flux vidéo : c'est un levier agissant sur la **couleur**, indépendant des
+deux autres leviers classiques d'encodage vidéo, la **résolution** et la
+**fréquence d'images (FPS)**. Les trois sont complémentaires et peuvent se
+cumuler :
+
+- réduire la résolution (par exemple 480x360 au lieu de 640x480) diminue le
+  nombre de pixels à encoder et à transmettre à chaque image ;
+- réduire le FPS (par exemple 15 au lieu de 30) diminue le nombre d'images à
+  encoder par seconde, donc la charge CPU et le débit, au prix de la fluidité ;
+- supprimer la chrominance (ce que fait `bw_camera`) diminue le volume
+  d'information par image sans réduire ni la résolution spatiale ni la
+  fluidité perçues.
+
+`bw_camera.c` expose `WIDTH`, `HEIGHT` et `FPS` comme des constantes de
+compilation (voir [Configuration](#configuration)) : ces trois leviers sont
+donc directement réglables et cumulables dans ce projet, à adapter selon
+l'usage (un point de visio en 15 FPS basse résolution consommera nettement
+moins qu'un flux 30 FPS pleine résolution, même en noir & blanc).
+
 ## Principe
 
 `bw_camera` est un petit programme C qui capture le flux d'une caméra physique
@@ -242,6 +264,45 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now bw_camera.service
 ```
+
+## Problèmes rencontrés
+
+Quelques difficultés concrètes ont orienté les choix d'implémentation du
+projet :
+
+**Le format `GREY` (niveaux de gris natif, 1 octet/pixel) est rejeté par les
+applications de visio.** V4L2 propose un format dédié au noir & blanc pur,
+plus léger que I420, mais Teams, Chrome et globalement WebRTC n'acceptent en
+entrée que des formats couleur standard. Solution retenue : sortir en I420
+(YUV 4:2:0) avec des plans de chrominance neutres (128) — l'image perçue est
+identique, l'application est satisfaite, et le gain de bande passante se fait
+au niveau de l'encodeur de l'application plutôt qu'au niveau du flux brut V4L2.
+
+**`VIDIOC_S_FMT` n'échoue pas en cas de résolution non supportée.** Le pilote
+V4L2 de la caméra source ajuste silencieusement le format demandé (résolution
+ou pixel format) sans retourner d'erreur. `bw_camera` doit donc systématiquement
+relire le format réellement négocié après l'ioctl et le comparer à celui
+demandé pour détecter un ajustement ou une incompatibilité (voir
+`bw_camera.c`, vérification du `pixelformat` après `VIDIOC_S_FMT`).
+
+**Écritures partielles et `EAGAIN` sur `/dev/video20`.** Le `write()` vers le
+périphérique de sortie v4l2loopback peut n'écrire qu'une partie de la frame,
+ou échouer temporairement avec `EAGAIN`/`EWOULDBLOCK` si aucun consommateur
+n'est encore attaché. `bw_camera` boucle sur `write()` (`write_full`) jusqu'à
+écriture complète, avec une courte pause en cas de blocage temporaire.
+
+**Faux positif de détection de processus déjà lancé.** Un premier essai de
+détection via `pgrep -f ./bw_camera` correspondait aussi au chemin du script
+`start_bw_camera.sh` lui-même (le nom du binaire apparaissant dans son propre
+chemin), provoquant une boucle de redémarrage sous systemd. Correction :
+`pgrep -x bw_camera` / `pkill -x bw_camera`, qui ne matche que le nom exact du
+processus.
+
+**Compilation DKMS instable selon la version du noyau.** Le module
+`v4l2loopback-dkms` peut échouer à se compiler sur certains noyaux récents ou
+patchés. `install.sh` privilégie donc un module pré-compilé (`.ko.zst`) déjà
+livré avec la distribution quand il existe, et ne recourt à DKMS qu'en
+absence de module pré-compilé disponible.
 
 ## Dépannage
 
