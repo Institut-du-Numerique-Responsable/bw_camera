@@ -1,0 +1,17 @@
+# bw_camera — Camera virtuelle noir & blanc pour Linux
+
+> Camera virtuelle V4L2 qui supprime la chrominance du flux webcam pour reduire la bande passante et l'energie de la visioconference. Compatible Teams, Chrome, Zoom et OBS via v4l2loopback. Ecrit en C.
+
+## Docs
+
+- [Site du projet](https://institut-du-numerique-responsable.github.io/bw_camera/)
+- [Code source et README](https://github.com/Institut-du-Numerique-Responsable/bw_camera)
+
+## Qui publie
+
+Publie par l'**Institut du Numerique Responsable** (INR), association loi 1901
+creee en 2018 : https://institutnr.org — voir aussi ISIT Belgique
+(https://isit-be.org) et ISIT Suisse (https://isit-ch.org).
+
+Citation : voir CITATION.cff a la racine du depot.
+Contributeurs : voir la page "Contributors" du depot GitHub.
